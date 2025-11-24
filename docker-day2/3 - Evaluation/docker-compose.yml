@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  
+  # Service Base de données PostgreSQL
+  database:
+    image: postgres:15-alpine
+    container_name: eval_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Exposition du port (optionnel, pour debug)
+    ports:
+      - "5432:5432"
+
+  # Service API Flask
+  api:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: mon-api:v1
+    container_name: eval_flask_api
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DB_HOST: database
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      ENVIRONMENT: production
+    networks:
+      - app_network
+    # Port exposé pour tests directs (optionnel)
+    ports:
+      - "5000:5000"
+
+  # Service Nginx (Reverse Proxy)
+  web:
+    image: nginx:alpine
+    container_name: eval_nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# Volumes nommés
+volumes:
+  postgres_data:
+    driver: local
+
+# Réseau personnalisé
+networks:
+  app_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
