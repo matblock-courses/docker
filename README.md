@@ -18,23 +18,23 @@ Lancer le conteneur et vérifier que l'application fonctionne correctement
 
 ## Commandes Docker pour l'application Node.js
 
-### Builder l'image
 ```bash
+# Builder l'image
 docker build -t demo-nodejs:1.0 .
 
-### Vérifier que l'image existe
+# Vérifier que l'image existe
 docker images | grep demo-nodejs
 
-### Exécuter le conteneur
+# Exécuter le conteneur
 docker run -d -p 3000:3000 --name mon-app-node demo-nodejs:1.0
 
 # Tester l'application
 curl http://localhost:3000
 
-### Voir les logs
+# Voir les logs
 docker logs mon-app-node
 
-### Nettoyer
+# Nettoyer
 docker stop mon-app-node
 docker rm mon-app-node
 docker rmi demo-nodejs:1.0
